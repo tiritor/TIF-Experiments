@@ -1,0 +1,6 @@
+iperf-c*.json
+.venv
+IPerf-*.pdf
+*evaluated_time_measurement*.csv
+experiment_data
+*.tex

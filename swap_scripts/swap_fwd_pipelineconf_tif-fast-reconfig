@@ -1,0 +1,51 @@
+#!/bin/bash
+
+GRPCURL_EXEC="$HOME/working_space/grpcurl"
+PATH_PREFIX="$HOME"
+BFRUNTIME_GRPC_ADDRESS="localhost:50052"
+
+
+PROTO=$1
+ITERATION=$2
+SWAP_ID=${3:-1}
+
+FWD_PIPELINE_CONF="tif.json"
+
+P4_PROGRAM="tif"
+FILE="time_measurement-$P4_PROGRAM-fast-reconfig.csv"
+CSV_HEADERS="protocol,iteration,swap_id,swap_started,initial_step_start,initial_step_end,swap_end"
+
+function get_unix_timestamp_in_secs () { echo "$(date +%s)"; }
+function get_unix_timestamp_in_ms () { echo "$(date +%s%N | cut -b1-13)"; }
+function get_unix_timestamp_in_ns () { echo "$(date +%s%N)"; }
+function save_time_measurement_to_file () {
+    # $1 --> $FILE
+    # $2 --> $CSV_HEADERS
+    # $3 --> $CSV_DATA_ROW
+    if [ ! -f "$1" ]; then
+        echo "$2" > $1
+    fi
+    echo "$3" >> $1
+}
+
+function swap_fwd_pipeline_conf () {
+    cat $HOME/working_space/$1 | $GRPCURL_EXEC -d @ -import-path $HOME/working_space/p4runtime_proto/proto -import-path $PATH_PREFIX/BF/bf-sde-9.7.0/install/share/bf_rt_shared/proto -proto $PATH_PREFIX/BF/bf-sde-9.7.0/install/share/bf_rt_shared/proto/bfruntime.proto -plaintext $BFRUNTIME_GRPC_ADDRESS bfrt_proto.BfRuntime.SetForwardingPipelineConfig
+}
+
+function initialize_ports () {
+   ### Here the hardware initialization must be done. 
+   ### Due to the license of the used SAL it is removed, and must be re-implemented again.
+}
+
+
+SWAP_START=$(get_unix_timestamp_in_ms)
+swap_fwd_pipeline_conf $FWD_PIPELINE_CONF
+
+INITIAL_STEP_START=$(get_unix_timestamp_in_ms)
+initialize_ports 
+INITIAL_STEP_END=$(get_unix_timestamp_in_ms)
+
+SWAP_END=$INITIAL_STEP_END
+
+CSV_DATA_ROW="$PROTO,$ITERATION,$SWAP_ID,$SWAP_START,$INITIAL_STEP_START,$INITIAL_STEP_END,$SWAP_END"
+save_time_measurement_to_file $FILE $CSV_HEADERS $CSV_DATA_ROW
